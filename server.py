@@ -1,33 +1,87 @@
 import socket
 import threading
+import sys
+from contextlib import closing
 
-PORT = 80
+# PORT = 80
+HEARTBEAT_REQUEST = "GET_ACTIVE_SERVERS"
+
+# all known server addresses in network
+# TO BE CHANGED: Replace with actual addresses and ports
+SERVERS = {
+    "server1": ("localhost", 8001),
+    "server2": ("localhost", 8002),
+    "server3": ("localhost", 8003),
+    "server4": ("localhost", 8004),
+}
 
 
-def start_server():
+# return count of active servers and list of active server names
+def check_active_servers(my_server_address, my_name):
+    active_count = 1  # Including itself in the count
+
+    active_servers = [my_name]  # Names of active servers, initialize with self
+    for server_name in SERVERS:
+        server_addr = SERVERS[server_name]
+        if server_addr == my_server_address:
+            continue  # Skip itself to avoid duplicate count
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            if sock.connect_ex(server_addr) == 0:
+                active_count += 1
+                active_servers.append(server_name)
+    return active_count, active_servers
+
+
+# heartbeat check to get number of servers (including self) in the network and their names
+# returns active_count to main server function
+def heartbeat_check():
+    active_count, active_servers = check_active_servers(my_server_address, my_name)
+    print(f"There are: {active_count} active servers in the network. ")
+    print("List of active servers (including current server): ")
+    for n in active_servers:
+        print(n)
+    return active_count
+
+
+def start_server(my_server_address, my_name):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('0.0.0.0', PORT))
+    server.bind(my_server_address)
     server.listen()
-    print(f"Server listening on port: {PORT}")
+    print(f"Server listening on port: {my_port}")
+    active_count = heartbeat_check()
 
     while True:
         client, address = server.accept()
-        client_listener = threading.Thread(target=listener, args=(client, address))
+        client_listener = threading.Thread(
+            target=listener, args=(client, address, active_count)
+        )
         client_listener.start()
 
 
-def listener(client, address):
+def listener(client, address, active_count):
     print(f"Connection established with {address}")
 
     while True:
         msg = client.recv(1024)
         if not msg:
             break
-        print(f"Received message from {address}: {msg.decode('utf-8')}")
+        decoded_msg = msg.decode("utf-8")
+        print(f"Received message from {address}: {decoded_msg}")
+        # check for heartbeat request from client
+        if decoded_msg == HEARTBEAT_REQUEST:
+            active_count = heartbeat_check()
+            active_count_bytes = active_count.to_bytes(4, byteorder="big")
+            client.send(active_count_bytes)
     print(f"Connection closed")
 
 
 if __name__ == "__main__":
-    start_server()
-
-    
+    # for now takes in port number from command arg to test
+    my_port = int(sys.argv[1])
+    # This server's address and port
+    my_server_address = ("localhost", my_port)
+    my_name = ""
+    for name in SERVERS:
+        if SERVERS[name] == my_server_address:
+            my_name = name
+    start_server(my_server_address, my_name)
