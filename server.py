@@ -77,6 +77,9 @@ def listener(client, address, active_count):
 
 if __name__ == "__main__":
     # for now takes in port number from command arg to test
+    if len(sys.argv) != 2:
+        print("Usage: server.py <port_number>")
+        sys.exit(1)
     my_port = int(sys.argv[1])
     # This server's address and port
     my_server_address = ("localhost", my_port)
