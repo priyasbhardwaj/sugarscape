@@ -1,10 +1,17 @@
 import json
+import math
 import os
 import socket
 import subprocess
 import time
 
 HEARTBEAT_REQUEST = "GET_ACTIVE_SERVERS"
+SERVERS = {
+    "server1": ("localhost", 5520),
+    "server2": ("localhost", 5521),
+    "server3": ("localhost", 5522),
+    "server4": ("localhost", 5523),
+}
 
 
 def run_make_seeds():
@@ -39,12 +46,45 @@ def send_config_files(client_socket):
     print("All .config files sent to server.")
 
 
+def divide_config_files(active_count):
+    run_make_seeds()
+    data_list = get_config_files()
+    num_configs = len(data_list)
+    config_per_server = math.ceil(num_configs / active_count)
+    divided_config = [data_list[i:i + config_per_server] for i in range(0, num_configs, config_per_server)]
+    return divided_config
+
+
+def send_config_to_server(host, port, configs):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect((host, port))
+        for config in configs:
+            with open(config, 'r') as file:
+                config_content = file.read()
+                send_message(client_socket,
+                             {"type": "config_file", "data": config_content, "filename": os.path.basename(config)})
+
+        # Notify server of transfer completion
+        send_message(client_socket, {"type": "transfer_complete"})
+    print("All .config files sent to server.")
+
+
+def send_divided_configs(active_count):
+    divided_config = divide_config_files(active_count)
+    for server_name, (host, port) in SERVERS.items():
+        configs = divided_config.pop(0)
+        send_config_to_server(host, port, configs)
+
+
 def start_client(host_id, host, port):
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((host, port))
     print(f"Connected to peer {host_id}")
-    send_config_files(client)
     active_count = 0
+    client.send(HEARTBEAT_REQUEST.encode("utf-8"))
+    active_count_bytes = client.recv(1024)
+    active_count = int.from_bytes(active_count_bytes, byteorder="big")
+    send_divided_configs(active_count)
     while True:
         # Get active server count via heartbeat check (repeats check every 1 minute)
         client.send(HEARTBEAT_REQUEST.encode("utf-8"))
@@ -55,6 +95,6 @@ def start_client(host_id, host, port):
 
 
 if __name__ == "__main__":
-    connections = [{"host_id": 1, "host": "localhost", "port": 8001}]
+    connections = [{"host_id": 1, "host": "localhost", "port": 5520}]
     for connection in connections:
         start_client(connection["host_id"], connection["host"], connection["port"])

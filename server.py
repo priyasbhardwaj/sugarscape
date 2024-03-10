@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import socket
+import subprocess
 import threading
 import sys
 from contextlib import closing
@@ -12,10 +13,10 @@ HEARTBEAT_REQUEST = "GET_ACTIVE_SERVERS"
 # all known server addresses in network
 # TO BE CHANGED: Replace with actual addresses and ports
 SERVERS = {
-    "server1": ("localhost", 8001),
-    "server2": ("localhost", 8002),
-    "server3": ("localhost", 8003),
-    "server4": ("localhost", 8004),
+    "server1": ("localhost", 5520),
+    "server2": ("localhost", 5521),
+    "server3": ("localhost", 5522),
+    "server4": ("localhost", 5523),
 }
 
 TEMP_DIR = 'temp'
@@ -84,6 +85,10 @@ def heartbeat_check():
     return active_count
 
 
+def run_simulation():
+    subprocess.run(["make", "data"], check=True)
+
+
 def start_server(my_server_address, my_name):
     setup_directories()
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -114,6 +119,7 @@ def listener(client, address, active_count):
             active_count_bytes = active_count.to_bytes(4, byteorder="big")
             client.send(active_count_bytes)
     recv_files_from_client(client, address)
+    run_simulation()
     print(f"Connection closed")
 
 
