@@ -23,10 +23,7 @@ DATA_DIR = 'data'
 
 
 def setup_directories():
-    for directory in [TEMP_DIR, DATA_DIR]:
-        if os.path.exists(directory):
-            shutil.rmtree(directory)
-        os.makedirs(directory)
+    os.makedirs(TEMP_DIR, exist_ok=True)
 
 
 def move_files_from_temp_to_data():

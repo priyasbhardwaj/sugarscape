@@ -13,7 +13,8 @@ def run_make_seeds():
 
 
 def get_config_files():
-    config_path = os.path.join(os.getcwd(), 'data')
+    path = os.path.join(os.getcwd(), 'sugarscape')
+    config_path = os.path.join(path, 'data')
     return [os.path.join(config_path, f) for f in os.listdir(config_path) if f.endswith('.config')]
 
 
@@ -23,23 +24,19 @@ def send_message(client_socket, message):
 
 
 def send_config_files(client_socket):
-    try:
-        # Generate .config files
-        run_make_seeds()
+    # Generate .config files
+    run_make_seeds()
 
-        # Send .config files to server
-        for config_file in get_config_files():
-            with open(config_file, 'r') as file:
-                config_content = file.read()
-                send_message(client_socket,
-                             {"type": "config_file", "data": config_content, "filename": os.path.basename(config_file)})
+    # Send .config files to server
+    for config_file in get_config_files():
+        with open(config_file, 'r') as file:
+            config_content = file.read()
+            send_message(client_socket,
+                         {"type": "config_file", "data": config_content, "filename": os.path.basename(config_file)})
 
-        # Notify server of transfer completion
-        send_message(client_socket, {"type": "transfer_complete"})
-        print("All .config files sent to server.")
-
-    finally:
-        client_socket.close()
+    # Notify server of transfer completion
+    send_message(client_socket, {"type": "transfer_complete"})
+    print("All .config files sent to server.")
 
 
 def start_client(host_id, host, port):

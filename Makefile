@@ -17,7 +17,7 @@ CLEAN = log.json \
 		$(PLOTS)
 
 # Change to python3 (or other alias) if needed
-PYTHON = python
+PYTHON = python3
 SUGARSCAPE = sugarscape.py
 
 # Check for local Bash and Python aliases
