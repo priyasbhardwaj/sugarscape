@@ -1,3 +1,6 @@
+import json
+import os
+import shutil
 import socket
 import threading
 import sys
@@ -14,6 +17,47 @@ SERVERS = {
     "server3": ("localhost", 8003),
     "server4": ("localhost", 8004),
 }
+
+TEMP_DIR = 'temp'
+DATA_DIR = 'data'
+
+
+def setup_directories():
+    for directory in [TEMP_DIR, DATA_DIR]:
+        if os.path.exists(directory):
+            shutil.rmtree(directory)
+        os.makedirs(directory)
+
+
+def move_files_from_temp_to_data():
+    for filename in os.listdir(TEMP_DIR):
+        shutil.move(os.path.join(TEMP_DIR, filename), DATA_DIR)
+    shutil.rmtree(TEMP_DIR)  # Optionally remove TEMP_DIR after moving files
+
+
+def recv_files_from_client(client_socket, address):
+    buffer = ""
+    while True:
+        chunk = client_socket.recv(4096).decode('utf-8')
+        if not chunk:
+            break
+        buffer += chunk
+
+        while '\n' in buffer:
+            message_end = buffer.index('\n') + 1
+            message = json.loads(buffer[:message_end])
+            buffer = buffer[message_end:]
+
+            if message['type'] == 'config_file':
+                filepath = os.path.join(TEMP_DIR, message['filename'])
+                with open(filepath, 'w') as file:
+                    file.write(message['data'])
+                print(f"Received and saved {message['filename']}")
+            elif message['type'] == 'transfer_complete':
+                print("Received transfer_complete message")
+                move_files_from_temp_to_data()
+                print("All .config files moved to data directory.")
+                break  # Exit after handling transfer_complete
 
 
 # return count of active servers and list of active server names
@@ -44,6 +88,7 @@ def heartbeat_check():
 
 
 def start_server(my_server_address, my_name):
+    setup_directories()
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(my_server_address)
     server.listen()
@@ -60,7 +105,6 @@ def start_server(my_server_address, my_name):
 
 def listener(client, address, active_count):
     print(f"Connection established with {address}")
-
     while True:
         msg = client.recv(1024)
         if not msg:
@@ -72,6 +116,7 @@ def listener(client, address, active_count):
             active_count = heartbeat_check()
             active_count_bytes = active_count.to_bytes(4, byteorder="big")
             client.send(active_count_bytes)
+    recv_files_from_client(client, address)
     print(f"Connection closed")
 
 
