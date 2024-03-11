@@ -6,6 +6,8 @@ import subprocess
 import threading
 import sys
 from contextlib import closing
+import time
+import struct
 
 # PORT = 80
 HEARTBEAT_REQUEST = "GET_ACTIVE_SERVERS"
@@ -19,8 +21,8 @@ SERVERS = {
     "server4": ("localhost", 5523),
 }
 
-TEMP_DIR = 'temp'
-DATA_DIR = 'data'
+TEMP_DIR = "temp"
+DATA_DIR = "data"
 
 
 def setup_directories():
@@ -36,22 +38,22 @@ def move_files_from_temp_to_data():
 def recv_files_from_client(client_socket, address):
     buffer = ""
     while True:
-        chunk = client_socket.recv(4096).decode('utf-8')
+        chunk = client_socket.recv(4096).decode("utf-8")
         if not chunk:
             break
         buffer += chunk
 
-        while '\n' in buffer:
-            message_end = buffer.index('\n') + 1
+        while "\n" in buffer:
+            message_end = buffer.index("\n") + 1
             message = json.loads(buffer[:message_end])
             buffer = buffer[message_end:]
 
-            if message['type'] == 'config_file':
-                filepath = os.path.join(TEMP_DIR, message['filename'])
-                with open(filepath, 'w') as file:
-                    file.write(message['data'])
+            if message["type"] == "config_file":
+                filepath = os.path.join(TEMP_DIR, message["filename"])
+                with open(filepath, "w") as file:
+                    file.write(message["data"])
                 print(f"Received and saved {message['filename']}")
-            elif message['type'] == 'transfer_complete':
+            elif message["type"] == "transfer_complete":
                 print("Received transfer_complete message")
                 move_files_from_temp_to_data()
                 print("All .config files moved to data directory.")
@@ -86,7 +88,12 @@ def heartbeat_check():
 
 
 def run_simulation():
+    # start simulation timer
+    start_time = time.time()
     subprocess.run(["make", "data"], check=True)
+    end_time = time.time()
+    elapsed_time = start_time - end_time
+    return elapsed_time
 
 
 def start_server(my_server_address, my_name):
@@ -107,6 +114,10 @@ def start_server(my_server_address, my_name):
 
 def listener(client, address, active_count):
     print(f"Connection established with {address}")
+    recv_files_from_client(client, address)
+    simulation_time = run_simulation()
+    simulation_bytes = struct.pack("f", simulation_time)
+    client.sendall(simulation_bytes)
     while True:
         msg = client.recv(1024)
         if not msg:
@@ -118,8 +129,7 @@ def listener(client, address, active_count):
             active_count = heartbeat_check()
             active_count_bytes = active_count.to_bytes(4, byteorder="big")
             client.send(active_count_bytes)
-    recv_files_from_client(client, address)
-    run_simulation()
+
     print(f"Connection closed")
 
 
