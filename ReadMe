@@ -1,0 +1,71 @@
+# Project: Scaling Sugarscape with Peer-to-Peer Networking
+
+This project aims to scale up the Sugarscape simulation, originally found at [nkremerh/sugarscape](https://github.com/nkremerh/sugarscape), by utilizing a peer-to-peer (P2P) network. 
+The enhanced Sugarscape model enables distributed computation across multiple servers, enhancing performance and scalability.
+
+# Features
+
+Peer-to-Peer Network Integration: Servers communicate with each other using a heartbeat check.
+Dynamic Load Balancing: The Client dynamically divides the computational load based on the number of active servers, ensuring efficient resource use.
+Scalability: Easily add or remove servers from the network to scale the simulation's computational power.
+
+# Getting Started
+
+# Prerequisites
+
+- Python 3.x
+- Network access between all participating servers
+- Bash
+- TkInter
+
+# Setup
+
+1. Clone the repository to each server that will participate in the simulation.
+2. Ensure each server has Python 3.x installed and accessible.
+
+# Configuration
+
+Before starting the simulation, configure the `SERVERS` dictionary in both server and client scripts to include the addresses and ports of all participating servers.
+
+Example `SERVERS` configuration:
+
+SERVERS = {
+    "server1": ("localhost", 5520),
+    "server2": ("localhost", 5521),
+    "server3": ("localhost", 5522),
+    "server4": ("localhost", 5523),
+}
+
+# Running the Simulation
+
+Usage:
+python3 server.py <portNumber>
+
+Usage:
+python3 client.py
+
+# On Each Server
+
+1. Open a terminal and navigate to the project directory.
+2. Run `server.py` with a specified port number that matches the configuration:
+
+python3 server.py 5520
+
+# On a Client Machine
+
+1. Open a terminal and navigate to the project directory.
+2. Run `client.py`, specifying the host and port of one of the servers to connect:
+
+python3 client.py
+
+The client will connect to the server network, distribute configuration files, and initiate the simulation.
+
+How It Works
+
+- The system utilizes a peer-to-peer network to distribute simulation tasks.
+- Servers communicate to balance the load and synchronize simulation states.
+- Clients can send configuration files to servers, which then distribute these files across the network for a distributed simulation run.
+
+# Contributing
+
+Please feel free to contributions to enhance the project. 
